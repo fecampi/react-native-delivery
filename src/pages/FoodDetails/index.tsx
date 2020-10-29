@@ -73,48 +73,92 @@ const FoodDetails: React.FC = () => {
 
   useEffect(() => {
     async function loadFood(): Promise<void> {
-      // Load a specific food with extras based on routeParams id
+      const response = await api.get(`/foods/${routeParams.id}`);
+
+      setFood({
+        ...response.data,
+        formattedPrice: formatValue(response.data.price),
+      });
+
+      setExtras(
+        //extra não tem a quantidade no server(ela deve ser setada pelo usuário)
+        response.data.extras.map((extra: Omit<Extra, 'quantity'>) => ({
+          ...extra,
+          quantity: 0,
+        })),
+      );
     }
 
     loadFood();
   }, [routeParams]);
 
   function handleIncrementExtra(id: number): void {
-    // Increment extra quantity
+    //vai no estado de extras e altera a quantidade
+    setExtras(
+      extras.map(extra =>
+        extra.id === id ? { ...extra, quantity: extra.quantity + 1 } : extra,
+      ),
+    );
   }
 
   function handleDecrementExtra(id: number): void {
-    // Decrement extra quantity
+    const findExtra = extras.find(extra => extra.id === id);
+    //se não tiver extra
+    if (!findExtra) return;
+    // se for 0 não fica -1
+    if (findExtra.quantity === 0) return;
+    //vai no estado de extras e altera a quantidade
+    setExtras(
+      extras.map(extra =>
+        extra.id === id ? { ...extra, quantity: extra.quantity - 1 } : extra,
+      ),
+    );
   }
 
   function handleIncrementFood(): void {
-    // Increment food quantity
+    setFoodQuantity(foodQuantity + 1);
   }
 
   function handleDecrementFood(): void {
-    // Decrement food quantity
+    //MANTER SEMPRE 1 - não pode fazer um pedido com 0 quantidade.
+    if (foodQuantity === 1) return;
+
+    setFoodQuantity(foodQuantity - 1);
   }
 
+//seleciona como favorito
   const toggleFavorite = useCallback(() => {
-    // Toggle if food is favorite or not
+    // retira como favorito, se já tiver
+    if (isFavorite) {
+      api.delete(`/favorites/${food.id}`);
+    } else {
+      //ou marca como favorito se não for
+      api.post(`/favorites`, food);
+    }
+    //nego o favorito
+    setIsFavorite(!isFavorite);
   }, [isFavorite, food]);
 
+  //valor total do carrinho
   const cartTotal = useMemo(() => {
-    // Calculate cartTotal
+    // com o reduce soma o valor total dos extras o 0 é o valor inicial
+    const extraTotal = extras.reduce((accumulator, extra) => {
+      return accumulator + extra.quantity * extra.value;
+    }, 0);
+
+    return formatValue((food.price + extraTotal) * foodQuantity);
   }, [extras, food, foodQuantity]);
 
-  async function handleFinishOrder(): Promise<void> {
-    // Finish the order and save on the API
-  }
+  async function handleFinishOrder(): Promise<void> {}
 
-  // Calculate the correct icon name
+  //muda de favorito ou não
   const favoriteIconName = useMemo(
     () => (isFavorite ? 'favorite' : 'favorite-border'),
     [isFavorite],
   );
 
+  //verifica se é favorito e muda o elemento
   useLayoutEffect(() => {
-    // Add the favorite icon on the right of the header bar
     navigation.setOptions({
       headerRight: () => (
         <MaterialIcon
@@ -125,6 +169,7 @@ const FoodDetails: React.FC = () => {
         />
       ),
     });
+    //observa o toggle favorite acima
   }, [navigation, favoriteIconName, toggleFavorite]);
 
   return (

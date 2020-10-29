@@ -53,28 +53,56 @@ const Dashboard: React.FC = () => {
 
   const navigation = useNavigation();
 
+  //Vai para o item selecionado
   async function handleNavigate(id: number): Promise<void> {
-    // Navigate do ProductDetails page
+    navigation.navigate('FoodDetails', {
+      id,
+    });
   }
+
+
 
   useEffect(() => {
     async function loadFoods(): Promise<void> {
-      // Load Foods from API
+      const response = await api.get('/foods', {
+        //(no final converte para querystring)
+        params: {
+          //Buscar uma categoria igual a selecionada
+          category_like: selectedCategory,
+          //Nome do produto
+          name_like: searchValue,
+        },
+      });
+
+      setFoods(
+        response.data.map((food: Food) => ({
+          ...food,
+          formattedPrice: formatValue(food.price),
+        })),
+      );
     }
 
     loadFoods();
+    //Quando alterar a categoria ou valor, refaça a requisição
   }, [selectedCategory, searchValue]);
 
   useEffect(() => {
     async function loadCategories(): Promise<void> {
-      // Load categories from API
+      const response = await api.get('/categories');
+      setCategories(response.data);
     }
 
     loadCategories();
   }, []);
 
   function handleSelectCategory(id: number): void {
-    // Select / deselect category
+    if (selectedCategory === id) {
+      //se a categoria for a mesma,de-seleciona
+      setSelectedCategory(undefined);
+    } else {
+      //se não for a mesma, seleciona
+      setSelectedCategory(id);
+    }
   }
 
   return (
